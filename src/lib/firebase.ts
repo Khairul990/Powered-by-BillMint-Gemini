@@ -18,9 +18,13 @@ async function testConnection() {
     // Try to reach the server directly
     await getDocFromServer(doc(db, '_health', 'check'));
     console.log('Firebase connection successful.');
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'permission-denied') {
+      console.log('Firebase connection successful (server reached, but permissions restricted).');
+      return;
+    }
     console.error('Firebase connection test failed:', error);
-    if (error instanceof Error && error.message.includes('offline')) {
+    if (error instanceof Error && (error.message.includes('offline') || error.code === 'unavailable')) {
       console.warn('Firebase is operating in offline mode. This might be due to configuration or network restrictions.');
     }
   }
