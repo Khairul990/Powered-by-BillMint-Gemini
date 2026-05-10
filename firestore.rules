@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(data) {
+      return isSignedIn() && data.userId == request.auth.uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Helper for Users ---
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId && 
+        request.resource.data.keys().hasAll(['uid', 'email', 'isPremium', 'invoiceCount', 'createdAt']) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.isPremium == false && 
+        request.resource.data.invoiceCount == 0;
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'lastLogin', 'invoiceCount', 'isPremium', 'uid', 'email', 'createdAt']) &&
+        request.resource.data.get('uid', request.auth.uid) == request.auth.uid;
+    }
+
+    // --- Customers ---
+    match /customers/{customerId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        isValidId(customerId);
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+      allow delete: if isOwner(resource.data);
+    }
+
+    // --- Products ---
+    match /products/{productId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        isValidId(productId);
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+      allow delete: if isOwner(resource.data);
+    }
+
+    // --- Invoices ---
+    match /invoices/{invoiceId} {
+      function canCreateInvoice() {
+        let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        return user.get('isPremium', false) == true || user.get('invoiceCount', 0) < 5;
+      }
+
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        isValidId(invoiceId) && canCreateInvoice();
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+      allow delete: if isOwner(resource.data);
+    }
+
+    // --- Invoice Items ---
+    match /invoices/{invoiceId}/items/{itemId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Expenses ---
+    match /expenses/{expenseId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        isValidId(expenseId);
+      allow update: if isOwner(resource.data) && request.resource.data.userId == request.auth.uid;
+      allow delete: if isOwner(resource.data);
+    }
+
+    // --- Settings ---
+    match /settings/{userId} {
+      function userIsPremium() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isPremium == true;
+      }
+
+      allow read: if isSignedIn() && userId == request.auth.uid;
+      allow create, update: if isSignedIn() && userId == request.auth.uid && 
+        (request.resource.data.logoUrl == null || userIsPremium());
+      allow delete: if isSignedIn() && userId == request.auth.uid;
+    }
+  }
+}

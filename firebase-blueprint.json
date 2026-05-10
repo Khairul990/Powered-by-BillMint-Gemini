@@ -1,0 +1,134 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and subscription status",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "isPremium": { "type": "boolean" },
+        "invoiceCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "isPremium"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer details for invoicing",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "totalDue": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Billing invoice data",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "total": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "dueAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Partial", "Due"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "invoiceNumber", "total", "status"]
+    },
+    "InvoiceItem": {
+      "title": "Invoice Item",
+      "description": "Line item in an invoice",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" },
+        "total": { "type": "number" }
+      },
+      "required": ["name", "quantity", "price", "total"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Product or catalog item",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "price", "createdAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Business expense record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "category", "amount", "date"]
+    },
+    "Settings": {
+      "title": "Business Settings",
+      "description": "Custom branding and business details",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "businessName": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "brandColor": { "type": "string" },
+        "invoiceStyle": { "type": "string" }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Store user accounts and subscription status"
+    },
+    "customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Customer registry"
+    },
+    "invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Main invoice records"
+    },
+    "invoices/{invoiceId}/items/{itemId}": {
+      "schema": "InvoiceItem",
+      "description": "Line items for a specific invoice"
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Product catalog for user"
+    },
+    "expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Business expense tracking"
+    },
+    "settings/{userId}": {
+      "schema": "Settings",
+      "description": "User-specific business settings"
+    }
+  }
+}
