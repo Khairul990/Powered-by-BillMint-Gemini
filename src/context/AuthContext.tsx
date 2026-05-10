@@ -2,7 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
-  GoogleAuthProvider, 
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut, 
   User 
 } from 'firebase/auth';
@@ -15,6 +18,9 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   login: () => Promise<void>;
+  loginWithEmail: (email: string, pass: string) => Promise<void>;
+  register: (email: string, pass: string, name?: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -71,14 +77,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Login popup was closed before finishing.');
       } else {
         console.error('Error signing in:', error);
+        throw error;
       }
     }
+  };
+
+  const loginWithEmail = async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const register = async (email: string, pass: string, name?: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    if (name && userCredential.user) {
+      const { updateProfile } = await import('firebase/auth');
+      await updateProfile(userCredential.user, { displayName: name });
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth, email);
   };
 
   const logout = () => signOut(auth);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, loginWithEmail, register, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
