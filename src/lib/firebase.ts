@@ -1,11 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, initializeFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+// Initialize Firestore with long polling to bypass potential network restrictions
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 
 export const auth = getAuth(app);
 
@@ -17,19 +20,18 @@ async function testConnection() {
     await getDocFromServer(healthDoc);
     console.log('Firebase connection successful.');
   } catch (error: any) {
+    // Ignore offline errors in the logs to avoid confusing the user, 
+    // as Firestore will automatically retry when connection is restored.
+    if (error?.message?.includes('offline') || error?.code === 'unavailable') {
+      return;
+    }
+    
     if (error?.code === 'permission-denied') {
       console.log('Firebase connection successful (server reached, but permissions restricted).');
       return;
     }
     
     console.error('Firebase connection test failed:', error);
-    
-    // If it failed and we're offline, try to initialize with long polling as a fallback
-    if (error?.message?.includes('offline') || error?.code === 'unavailable') {
-      console.warn('Standard connection failed, attempting long polling fallback...');
-      // Note: We can't easily re-initialize 'db' here as it's exported and already used.
-      // But we can suggest it in the logs or try a different approach if this were a production app.
-    }
   }
 }
 testConnection();
