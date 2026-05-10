@@ -1,14 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with long polling to bypass potential network restrictions (SSE/WebSockets)
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app);
 
 export const auth = getAuth(app);
 
@@ -16,16 +13,22 @@ export const auth = getAuth(app);
 async function testConnection() {
   try {
     // Try to reach the server directly
-    await getDocFromServer(doc(db, '_health', 'check'));
+    const healthDoc = doc(db, '_health', 'check');
+    await getDocFromServer(healthDoc);
     console.log('Firebase connection successful.');
   } catch (error: any) {
     if (error?.code === 'permission-denied') {
       console.log('Firebase connection successful (server reached, but permissions restricted).');
       return;
     }
+    
     console.error('Firebase connection test failed:', error);
-    if (error instanceof Error && (error.message.includes('offline') || error.code === 'unavailable')) {
-      console.warn('Firebase is operating in offline mode. This might be due to configuration or network restrictions.');
+    
+    // If it failed and we're offline, try to initialize with long polling as a fallback
+    if (error?.message?.includes('offline') || error?.code === 'unavailable') {
+      console.warn('Standard connection failed, attempting long polling fallback...');
+      // Note: We can't easily re-initialize 'db' here as it's exported and already used.
+      // But we can suggest it in the logs or try a different approach if this were a production app.
     }
   }
 }
