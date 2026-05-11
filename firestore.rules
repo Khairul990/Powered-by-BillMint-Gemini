@@ -18,11 +18,6 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // --- Health Check ---
-    match /_health/{documentId} {
-      allow read: if true;
-    }
-
     // --- Helper for Users ---
     match /users/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
